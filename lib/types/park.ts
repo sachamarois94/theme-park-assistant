@@ -81,6 +81,33 @@ export interface DayPlan {
   steps: PlannerStep[];
 }
 
+export type WaitBaselineConfidence = "HIGH" | "MEDIUM" | "LOW";
+export type WaitBaselineSource = "bucket" | "hour" | "global" | "fallback";
+
+export interface WaitOpportunityEntry {
+  attractionId: string;
+  attractionName: string;
+  land?: string;
+  currentWaitMinutes: number;
+  typicalWaitMinutes: number;
+  deltaMinutes: number;
+  deltaPercent: number;
+  confidence: WaitBaselineConfidence;
+  baselineSource: WaitBaselineSource;
+  score: number;
+  reliabilityRisk: number;
+  trendPoints: number[];
+}
+
+export interface WaitOpportunitySnapshot {
+  parkId: ParkId;
+  generatedAt: string;
+  hero: WaitOpportunityEntry | null;
+  betterThanUsual: WaitOpportunityEntry[];
+  worseThanUsual: WaitOpportunityEntry[];
+  insight: string;
+}
+
 export type ProactiveNudgeType = "WAIT_DROP" | "BEST_MOVE" | "CLOSURE";
 
 export interface ProactiveNudge {

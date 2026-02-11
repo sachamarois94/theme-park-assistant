@@ -9,6 +9,7 @@ Dark-first, mobile-first Next.js PWA for Orlando Disney + Universal operations g
 - Live data API endpoints:
   - `GET /api/parks`
   - `GET /api/parks/:parkId/live`
+  - `GET /api/parks/:parkId/opportunities`
   - `POST /api/chat`
   - `POST /api/plan/generate`
   - `POST /api/plan/replan`
@@ -68,6 +69,21 @@ And hard-refresh your browser (`Cmd+Shift+R`). The app now auto-unregisters serv
 - If provider IDs are not configured, the app attempts park-name discovery.
 - If both providers fail, APIs return a synthetic snapshot with a `degradedReason` for UI continuity.
 - For production, replace synthetic fallback with strict degraded mode and monitor provider health.
+
+## Historical wait baselines
+
+The recommendation engine now uses relative wait opportunities:
+- Typical baseline by `park + attraction + day-of-week + 15-minute bucket`
+- Fallbacks: same attraction/hour, then attraction global median
+- Output: best move hero + better/worse-than-usual scorecards
+
+Local/development storage:
+- Uses a compact bounded history store in `.data/wait-history.json` (not full raw logs)
+- Bounded arrays keep memory and disk growth controlled
+
+Production recommendation:
+- Move history persistence to managed storage (Postgres/Timescale/ClickHouse/BigQuery)
+- Keep this same scoring logic in the app layer, but query baselines from the database
 
 ## Validation commands
 

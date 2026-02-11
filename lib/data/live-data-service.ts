@@ -2,6 +2,7 @@ import { getParkById, PARKS } from "@/lib/config/parks";
 import { queueTimesProvider } from "@/lib/providers/queuetimes";
 import { themeParksProvider } from "@/lib/providers/themeparks";
 import { DayPlan, LiveAttractionState, ParkDefinition, ParkId, ParkLiveSnapshot, PlannerStep } from "@/lib/types/park";
+import { buildWaitOpportunitySnapshot, ingestSnapshotHistory } from "@/lib/data/wait-history-store";
 
 const CACHE_TTL_SECONDS = Number(process.env.LIVE_CACHE_TTL_SECONDS ?? 45);
 const PROV_ORDER = [themeParksProvider, queueTimesProvider];
@@ -194,6 +195,7 @@ export async function getParkLiveSnapshot(
 
   if (bestSnapshot) {
     const sanitized = sanitizeSnapshot(bestSnapshot);
+    ingestSnapshotHistory(sanitized);
 
     liveCache.set(park.id, {
       snapshot: sanitized,
@@ -230,6 +232,23 @@ export function listParks() {
 }
 
 export function recommendNext(snapshot: ParkLiveSnapshot) {
+  const opportunities = buildWaitOpportunitySnapshot(snapshot);
+  const byId = new Map(snapshot.attractions.map((item) => [item.attractionId, item] as const));
+  if (opportunities.hero) {
+    const hero = byId.get(opportunities.hero.attractionId) ?? null;
+    const alternatives = opportunities.betterThanUsual
+      .slice(1, 4)
+      .map((entry) => byId.get(entry.attractionId))
+      .filter((value): value is NonNullable<typeof value> => Boolean(value));
+
+    if (hero) {
+      return {
+        top: hero,
+        alternatives
+      };
+    }
+  }
+
   const candidates = snapshot.attractions
     .filter((item) => item.status === "OPERATING")
     .filter((item): item is typeof item & { waitMinutes: number } => typeof item.waitMinutes === "number")

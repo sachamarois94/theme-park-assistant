@@ -75,6 +75,17 @@ async function run() {
     fail("Chat API missing dataFreshness provider.");
   }
 
+  const opportunities = await fetchJson(`/api/parks/${sampleParkId}/opportunities?refresh=true`);
+  if (!Array.isArray(opportunities.betterThanUsual)) {
+    fail("Opportunities API missing betterThanUsual array.");
+  }
+  if (!Array.isArray(opportunities.worseThanUsual)) {
+    fail("Opportunities API missing worseThanUsual array.");
+  }
+  if (typeof opportunities.insight !== "string") {
+    fail("Opportunities API missing insight.");
+  }
+
   const generated = await fetchJson("/api/plan/generate", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -105,7 +116,8 @@ async function run() {
     syntheticCount,
     staleCount: liveResults.filter((item) => item.stale).length,
     sampleParkId,
-    healthOk: Boolean(health.ok)
+    healthOk: Boolean(health.ok),
+    opportunityHero: opportunities.hero?.attractionName ?? null
   };
   console.log("Smoke summary:", JSON.stringify(summary, null, 2));
 

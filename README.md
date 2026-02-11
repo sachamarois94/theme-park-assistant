@@ -85,6 +85,76 @@ Production recommendation:
 - Move history persistence to managed storage (Postgres/Timescale/ClickHouse/BigQuery)
 - Keep this same scoring logic in the app layer, but query baselines from the database
 
+## Production DB Pipeline (New)
+
+This repo now includes a production-ready Postgres schema + ingestion worker.
+
+Files:
+- `db/wait-history-schema.sql`
+- `scripts/setup-wait-history-db.mjs`
+- `scripts/ingest-live-to-db.mjs`
+- `scripts/refresh-wait-baselines.mjs`
+
+### 1) Prepare database objects
+
+Set `DATABASE_URL` in `.env.local`, then run:
+
+```bash
+npm run db:prepare:wait-history
+```
+
+This creates:
+- `wait_observations` table (deduped raw observations)
+- materialized views:
+  - `wait_baseline_15m`
+  - `wait_baseline_hour`
+  - `wait_baseline_global`
+- helper SQL functions:
+  - `refresh_wait_baselines()`
+  - `prune_wait_observations(retention interval)`
+
+### 2) Run ingestion worker
+
+Keep app/API running, then ingest snapshots:
+
+```bash
+npm run db:ingest:wait-history
+```
+
+What it does:
+- calls `/api/parks`
+- calls `/api/parks/:parkId/live?refresh=true`
+- inserts normalized rows into Postgres with conflict-safe dedupe
+
+### 3) Refresh baselines + retention
+
+```bash
+npm run db:refresh:wait-baselines
+```
+
+This refreshes all baseline materialized views and prunes old history by `PRUNE_RETENTION_DAYS` (default `120`).
+
+### 4) Recommended production schedules
+
+- Ingest job: every 5 minutes
+- Baseline refresh + prune: every 15 minutes
+
+Example cron:
+
+```bash
+*/5 * * * * cd /path/to/repo && npm run db:ingest:wait-history
+*/15 * * * * cd /path/to/repo && npm run db:refresh:wait-baselines
+```
+
+Environment variables used by workers:
+- `DATABASE_URL` (required)
+- `BASE_URL` (default `http://localhost:3000`)
+- `INGEST_REQUEST_TIMEOUT_MS` (default `25000`)
+- `INGEST_BATCH_SIZE` (default `250`)
+- `INGEST_FORCE_REFRESH` (default `1`)
+- `INGEST_REFRESH_BASELINES` (default `0`)
+- `PRUNE_RETENTION_DAYS` (default `120`)
+
 ## Validation commands
 
 Run these while `npm run dev` is active:

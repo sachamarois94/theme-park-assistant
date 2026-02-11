@@ -135,6 +135,18 @@ Observability:
 - Redis (or equivalent) for hot live-data cache.
 - Postgres (or equivalent) for analytics/events and future accounts.
 
+### Production Wait-History Pipeline
+
+Storage objects:
+- `wait_observations` table for 5-minute ingest rows.
+- `wait_baseline_15m` materialized view for main baseline lookup.
+- `wait_baseline_hour` and `wait_baseline_global` materialized views as fallback tiers.
+
+Worker cadence:
+1. Ingest worker every 5 minutes (`scripts/ingest-live-to-db.mjs`).
+2. Baseline refresh worker every 15 minutes (`scripts/refresh-wait-baselines.mjs`).
+3. Retention prune each refresh run via `prune_wait_observations()` (default 120 days).
+
 ## 10) Delivery Plan
 
 Phase 1:

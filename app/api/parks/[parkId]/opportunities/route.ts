@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getParkLiveSnapshot } from "@/lib/data/live-data-service";
 import { buildWaitOpportunitySnapshot } from "@/lib/data/wait-history-store";
+import { buildWaitOpportunitySnapshotFromPostgres } from "@/lib/data/wait-opportunities-db";
 
 export async function GET(
   request: NextRequest,
@@ -14,10 +15,12 @@ export async function GET(
     return NextResponse.json({ error: "Unsupported park id" }, { status: 404 });
   }
 
-  const opportunities = buildWaitOpportunitySnapshot(snapshot);
+  const opportunitiesFromDb = await buildWaitOpportunitySnapshotFromPostgres(snapshot);
+  const opportunities = opportunitiesFromDb ?? buildWaitOpportunitySnapshot(snapshot);
 
   return NextResponse.json({
     ...opportunities,
+    baselineBackend: opportunitiesFromDb ? "postgres" : "local",
     dataFreshness: {
       provider: snapshot.provider,
       sourceUpdatedAt: snapshot.sourceUpdatedAt,

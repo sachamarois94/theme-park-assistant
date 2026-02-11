@@ -1,0 +1,55 @@
+# Theme Park Assistant
+
+Dark-first, mobile-first Next.js PWA for Orlando Disney + Universal operations guidance.
+
+## What is included
+
+- V1 app shell with Home, Plan, Chat, and Pricing pages.
+- PWA setup (manifest + service worker registration).
+- Live data API endpoints:
+  - `GET /api/parks`
+  - `GET /api/parks/:parkId/live`
+  - `POST /api/chat`
+  - `POST /api/plan/generate`
+  - `POST /api/plan/replan`
+  - `GET|POST /api/proactive/toggle`
+- Queue-time adapter strategy:
+  - Primary: ThemeParks Wiki API
+  - Fallback: Queue-Times API
+
+## Quick start
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Create `.env.local` from `.env.example`:
+
+```bash
+cp .env.example .env.local
+```
+
+3. (Optional but recommended) Fill in known provider IDs for each park.
+
+4. Run development server:
+
+```bash
+npm run dev
+```
+
+## Notes on queue data
+
+- If provider IDs are not configured, the app attempts park-name discovery.
+- If both providers fail, APIs return a synthetic snapshot with a `degradedReason` for UI continuity.
+- For production, replace synthetic fallback with strict degraded mode and monitor provider health.
+
+## Project structure
+
+- `/app` - Next.js App Router pages and API routes
+- `/components` - UI components
+- `/lib/config` - park definitions
+- `/lib/providers` - provider adapters and normalization utilities
+- `/lib/data` - live snapshot caching, planning, and recommendation helpers
+- `/docs` - PRD, architecture, UI blueprint, and data strategy

@@ -22,6 +22,11 @@ Dark-first, mobile-first Next.js PWA for Orlando Disney + Universal operations g
 
 Prerequisite:
 - Use Node `20.x`, `22.x`, or `24.x` (Node `25.x` is not supported for this project).
+- If you do not use `nvm`, run with Node 22 directly:
+
+```bash
+npx -y node@22 ./node_modules/next/dist/bin/next dev
+```
 
 1. Install dependencies:
 

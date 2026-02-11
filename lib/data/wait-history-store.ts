@@ -313,6 +313,14 @@ function buildTrend(history: AttractionHistory | undefined, currentWait: number,
   return downsampled.slice(-maxPoints);
 }
 
+function isBestMoveCandidate(entry: WaitOpportunityEntry): boolean {
+  return (
+    entry.confidence !== "LOW" &&
+    entry.baselineSource !== "fallback" &&
+    entry.currentWaitMinutes > 0
+  );
+}
+
 function buildOpportunityEntry(snapshot: ParkLiveSnapshot, attractionIndex: number): WaitOpportunityEntry | null {
   const attraction = snapshot.attractions[attractionIndex];
   if (attraction.status !== "OPERATING" || typeof attraction.waitMinutes !== "number") {
@@ -417,7 +425,9 @@ export function buildWaitOpportunitySnapshot(snapshot: ParkLiveSnapshot): WaitOp
     .sort((a, b) => b.deltaPercent - a.deltaPercent || b.deltaMinutes - a.deltaMinutes)
     .slice(0, 3);
 
-  const hero = betterThanUsual[0] ?? [...entries].sort((a, b) => b.score - a.score)[0] ?? null;
+  const preferredBetter = betterThanUsual.filter(isBestMoveCandidate);
+  const preferredAll = entries.filter(isBestMoveCandidate).sort((a, b) => b.score - a.score);
+  const hero = preferredBetter[0] ?? preferredAll[0] ?? null;
   const mediumOrHigh = entries.filter((entry) => entry.confidence !== "LOW").length;
 
   return {

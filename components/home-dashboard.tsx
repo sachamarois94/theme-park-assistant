@@ -312,7 +312,12 @@ export function HomeDashboard() {
     }
 
     return [...snapshot.attractions]
-      .filter((item) => item.status === "OPERATING" && typeof item.waitMinutes === "number")
+      .filter(
+        (item) =>
+          item.status === "OPERATING" &&
+          typeof item.waitMinutes === "number" &&
+          item.waitMinutes > 0
+      )
       .sort((a, b) => (a.waitMinutes ?? 999) - (b.waitMinutes ?? 999))[0] ?? null;
   }, [snapshot]);
 

@@ -139,11 +139,31 @@ This refreshes all baseline materialized views and prunes old history by `PRUNE_
 - Ingest job: every 5 minutes
 - Baseline refresh + prune: every 15 minutes
 
-Example cron:
+macOS one-command installer:
 
 ```bash
-*/5 * * * * cd /path/to/repo && npm run db:ingest:wait-history
-*/15 * * * * cd /path/to/repo && npm run db:refresh:wait-baselines
+npm run db:cron:install:macos
+```
+
+This installs cron jobs that run:
+
+```bash
+/bin/bash scripts/jobs/ingest-wait-history.sh
+/bin/bash scripts/jobs/refresh-wait-baselines.sh
+```
+
+Useful checks:
+
+```bash
+crontab -l | sed -n '/THEME_PARK_ASSISTANT_BEGIN/,/THEME_PARK_ASSISTANT_END/p'
+tail -f .logs/cron/ingest.log
+tail -f .logs/cron/refresh.log
+```
+
+Uninstall managed cron jobs:
+
+```bash
+npm run db:cron:uninstall:macos
 ```
 
 Environment variables used by workers:

@@ -17,7 +17,9 @@
     "health:live": "node scripts/live-health-check.mjs",
     "db:prepare:wait-history": "node scripts/setup-wait-history-db.mjs",
     "db:ingest:wait-history": "node scripts/ingest-live-to-db.mjs",
-    "db:refresh:wait-baselines": "node scripts/refresh-wait-baselines.mjs"
+    "db:refresh:wait-baselines": "node scripts/refresh-wait-baselines.mjs",
+    "db:cron:install:macos": "bash scripts/jobs/install-cron-macos.sh",
+    "db:cron:uninstall:macos": "bash scripts/jobs/uninstall-cron-macos.sh"
   },
   "dependencies": {
     "clsx": "^2.1.1",

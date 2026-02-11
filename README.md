@@ -20,6 +20,9 @@ Dark-first, mobile-first Next.js PWA for Orlando Disney + Universal operations g
 
 ## Quick start
 
+Prerequisite:
+- Use Node `20.x`, `22.x`, or `24.x` (Node `25.x` is not supported for this project).
+
 1. Install dependencies:
 
 ```bash
@@ -45,6 +48,15 @@ npm run dev
 5. Open the website:
 
 `http://localhost:3000`
+
+If UI looks stale/unstyled in development:
+
+```bash
+rm -rf .next
+npm run dev
+```
+
+And hard-refresh your browser (`Cmd+Shift+R`). The app now auto-unregisters service workers in dev.
 
 ## Notes on queue data
 

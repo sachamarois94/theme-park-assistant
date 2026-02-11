@@ -268,6 +268,8 @@ export function HomeDashboard() {
           <h3 className="text-lg font-semibold">Live Queue Board</h3>
           {snapshot?.degradedReason ? (
             <span className="pill px-3 py-1 text-xs text-amber-200">{snapshot.degradedReason}</span>
+          ) : (
+            <span className="pill px-3 py-1 text-xs text-soft">Queue-focused attractions</span>
           ) : null}
         </div>
 

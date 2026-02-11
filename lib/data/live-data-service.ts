@@ -1,7 +1,7 @@
 import { getParkById, PARKS } from "@/lib/config/parks";
 import { queueTimesProvider } from "@/lib/providers/queuetimes";
 import { themeParksProvider } from "@/lib/providers/themeparks";
-import { DayPlan, ParkDefinition, ParkId, ParkLiveSnapshot, PlannerStep } from "@/lib/types/park";
+import { DayPlan, LiveAttractionState, ParkDefinition, ParkId, ParkLiveSnapshot, PlannerStep } from "@/lib/types/park";
 
 const CACHE_TTL_SECONDS = Number(process.env.LIVE_CACHE_TTL_SECONDS ?? 45);
 const PROV_ORDER = [themeParksProvider, queueTimesProvider];
@@ -13,12 +13,99 @@ type CachedSnapshot = {
 
 const liveCache = new Map<ParkId, CachedSnapshot>();
 
+const NON_RIDE_NAME_PATTERN =
+  /\b(park|cavalcade|parade|fireworks|spectacular|show|character|meet|greet|after hours|restaurant|dining|shop|store|merch|photopass)\b/i;
+const RIDE_HINT_PATTERN =
+  /\b(coaster|mountain|train|railroad|adventure|flight|journey|run|dash|rapids|safari|speedway|track|expedition|river|mansion|pirates|spin|tower)\b/i;
+
 function nowIso(): string {
   return new Date().toISOString();
 }
 
 function randomWait(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function normalizeName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function buildSummary(attractions: LiveAttractionState[]) {
+  const open = attractions.filter((item) => item.status === "OPERATING");
+  const down = attractions.filter((item) =>
+    item.status === "DOWN" || item.status === "CLOSED" || item.status === "REFURBISHMENT"
+  );
+  const waits = open
+    .map((item) => item.waitMinutes)
+    .filter((value): value is number => typeof value === "number");
+
+  const averageWaitMinutes =
+    waits.length > 0
+      ? Math.round(waits.reduce((acc, current) => acc + current, 0) / waits.length)
+      : null;
+
+  const sortedByWait = open
+    .filter((item): item is LiveAttractionState & { waitMinutes: number } => typeof item.waitMinutes === "number")
+    .sort((a, b) => a.waitMinutes - b.waitMinutes);
+
+  return {
+    openCount: open.length,
+    downCount: down.length,
+    averageWaitMinutes,
+    shortestWait:
+      sortedByWait.length > 0
+        ? { name: sortedByWait[0].name, minutes: sortedByWait[0].waitMinutes }
+        : null,
+    longestWait:
+      sortedByWait.length > 0
+        ? {
+            name: sortedByWait[sortedByWait.length - 1].name,
+            minutes: sortedByWait[sortedByWait.length - 1].waitMinutes
+          }
+        : null
+  };
+}
+
+function isQueueRelevantAttraction(attraction: LiveAttractionState, parkName: string): boolean {
+  const hasQueueSignal =
+    typeof attraction.waitMinutes === "number" ||
+    attraction.queueType === "STANDBY" ||
+    attraction.queueType === "SINGLE_RIDER" ||
+    attraction.queueType === "VIRTUAL";
+  if (hasQueueSignal) {
+    return true;
+  }
+
+  const normalizedAttractionName = normalizeName(attraction.name);
+  const normalizedParkName = normalizeName(parkName);
+
+  if (normalizedAttractionName === normalizedParkName) {
+    return false;
+  }
+
+  if (NON_RIDE_NAME_PATTERN.test(attraction.name)) {
+    return false;
+  }
+
+  // Keep non-operating entries only if they still look ride-like.
+  if (attraction.status !== "OPERATING" && RIDE_HINT_PATTERN.test(attraction.name)) {
+    return true;
+  }
+
+  return false;
+}
+
+function sanitizeSnapshot(snapshot: ParkLiveSnapshot): ParkLiveSnapshot {
+  const filtered = snapshot.attractions.filter((item) => isQueueRelevantAttraction(item, snapshot.parkName));
+  if (filtered.length === 0) {
+    return snapshot;
+  }
+
+  return {
+    ...snapshot,
+    attractions: filtered,
+    summary: buildSummary(filtered)
+  };
 }
 
 function buildSyntheticSnapshot(park: ParkDefinition, reason: string): ParkLiveSnapshot {
@@ -105,11 +192,13 @@ export async function getParkLiveSnapshot(
   }
 
   if (bestSnapshot) {
+    const sanitized = sanitizeSnapshot(bestSnapshot);
+
     liveCache.set(park.id, {
-      snapshot: bestSnapshot,
+      snapshot: sanitized,
       expiresAt: now + CACHE_TTL_SECONDS * 1000
     });
-    return bestSnapshot;
+    return sanitized;
   }
 
   if (cached) {

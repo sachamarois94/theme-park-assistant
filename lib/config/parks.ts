@@ -5,7 +5,13 @@ export const PARKS: ParkDefinition[] = [
     id: "disney-magic-kingdom",
     name: "Magic Kingdom",
     resort: "Walt Disney World",
-    aliases: ["magic kingdom", "mk", "disney magic kingdom"],
+    aliases: [
+      "magic kingdom",
+      "magic kingdom park",
+      "mk",
+      "disney magic kingdom",
+      "walt disney world magic kingdom"
+    ],
     providerHints: {
       themeparksEntityId: process.env.THEMEPARKS_MAGIC_KINGDOM_ID,
       queueTimesParkId: process.env.QUEUETIMES_MAGIC_KINGDOM_ID
@@ -22,7 +28,7 @@ export const PARKS: ParkDefinition[] = [
     id: "disney-epcot",
     name: "EPCOT",
     resort: "Walt Disney World",
-    aliases: ["epcot", "disney epcot"],
+    aliases: ["epcot", "epcot park", "disney epcot", "walt disney world epcot"],
     providerHints: {
       themeparksEntityId: process.env.THEMEPARKS_EPCOT_ID,
       queueTimesParkId: process.env.QUEUETIMES_EPCOT_ID
@@ -39,7 +45,13 @@ export const PARKS: ParkDefinition[] = [
     id: "disney-hollywood-studios",
     name: "Disney's Hollywood Studios",
     resort: "Walt Disney World",
-    aliases: ["hollywood studios", "dhs", "studios"],
+    aliases: [
+      "hollywood studios",
+      "disneys hollywood studios",
+      "disney's hollywood studios",
+      "dhs",
+      "studios"
+    ],
     providerHints: {
       themeparksEntityId: process.env.THEMEPARKS_HOLLYWOOD_STUDIOS_ID,
       queueTimesParkId: process.env.QUEUETIMES_HOLLYWOOD_STUDIOS_ID
@@ -56,7 +68,14 @@ export const PARKS: ParkDefinition[] = [
     id: "disney-animal-kingdom",
     name: "Disney's Animal Kingdom",
     resort: "Walt Disney World",
-    aliases: ["animal kingdom", "dak", "ak"],
+    aliases: [
+      "animal kingdom",
+      "animal kingdom park",
+      "disney's animal kingdom",
+      "disneys animal kingdom",
+      "dak",
+      "ak"
+    ],
     providerHints: {
       themeparksEntityId: process.env.THEMEPARKS_ANIMAL_KINGDOM_ID,
       queueTimesParkId: process.env.QUEUETIMES_ANIMAL_KINGDOM_ID
@@ -73,7 +92,12 @@ export const PARKS: ParkDefinition[] = [
     id: "universal-studios-florida",
     name: "Universal Studios Florida",
     resort: "Universal Orlando",
-    aliases: ["universal studios florida", "usf", "universal studios"],
+    aliases: [
+      "universal studios florida",
+      "universal studios",
+      "usf",
+      "universal orlando studios"
+    ],
     providerHints: {
       themeparksEntityId: process.env.THEMEPARKS_UNIVERSAL_STUDIOS_FLORIDA_ID,
       queueTimesParkId: process.env.QUEUETIMES_UNIVERSAL_STUDIOS_FLORIDA_ID
@@ -90,7 +114,12 @@ export const PARKS: ParkDefinition[] = [
     id: "universal-islands-of-adventure",
     name: "Universal Islands of Adventure",
     resort: "Universal Orlando",
-    aliases: ["islands of adventure", "ioa", "universal ioa"],
+    aliases: [
+      "islands of adventure",
+      "universal islands of adventure",
+      "ioa",
+      "universal ioa"
+    ],
     providerHints: {
       themeparksEntityId: process.env.THEMEPARKS_ISLANDS_OF_ADVENTURE_ID,
       queueTimesParkId: process.env.QUEUETIMES_ISLANDS_OF_ADVENTURE_ID
@@ -107,7 +136,12 @@ export const PARKS: ParkDefinition[] = [
     id: "universal-epic-universe",
     name: "Universal Epic Universe",
     resort: "Universal Orlando",
-    aliases: ["epic universe", "universal epic universe", "eu"],
+    aliases: [
+      "epic universe",
+      "universal epic universe",
+      "universal's epic universe",
+      "eu"
+    ],
     providerHints: {
       themeparksEntityId: process.env.THEMEPARKS_EPIC_UNIVERSE_ID,
       queueTimesParkId: process.env.QUEUETIMES_EPIC_UNIVERSE_ID
@@ -124,7 +158,12 @@ export const PARKS: ParkDefinition[] = [
     id: "universal-volcano-bay",
     name: "Universal Volcano Bay",
     resort: "Universal Orlando",
-    aliases: ["volcano bay", "vb", "universal water park"],
+    aliases: [
+      "volcano bay",
+      "universal volcano bay",
+      "vb",
+      "universal water park"
+    ],
     providerHints: {
       themeparksEntityId: process.env.THEMEPARKS_VOLCANO_BAY_ID,
       queueTimesParkId: process.env.QUEUETIMES_VOLCANO_BAY_ID

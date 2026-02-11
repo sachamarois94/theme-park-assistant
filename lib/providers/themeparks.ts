@@ -9,7 +9,7 @@ import {
 } from "@/lib/providers/base";
 
 const API_BASE = process.env.THEMEPARKS_API_BASE ?? "https://api.themeparks.wiki/v1";
-const STALE_AFTER_SECONDS = Number(process.env.LIVE_STALE_AFTER_SECONDS ?? 360);
+const STALE_AFTER_SECONDS = Number(process.env.LIVE_STALE_AFTER_SECONDS ?? 10800);
 
 const discoveredEntityIds = new Map<string, string>();
 
@@ -59,9 +59,23 @@ async function resolveEntityId(park: ParkDefinition): Promise<string | null> {
 
   const nodes: Array<{ id: string; name: string }> = [];
   collectNamedNodes(destinations, nodes);
-  const aliases = new Set([park.name, ...park.aliases].map(normalize));
+  const aliases = [park.name, ...park.aliases].map(normalize);
+  const aliasSet = new Set(aliases);
 
-  const match = nodes.find((node) => aliases.has(normalize(node.name)));
+  const exact = nodes.find((node) => aliasSet.has(normalize(node.name)));
+  if (exact) {
+    discoveredEntityIds.set(park.id, exact.id);
+    return exact.id;
+  }
+
+  const expanded = nodes
+    .map((node) => ({ node, normalized: normalize(node.name) }))
+    .filter((entry) =>
+      aliases.some((alias) => entry.normalized.includes(alias) || alias.includes(entry.normalized))
+    )
+    .sort((a, b) => a.normalized.length - b.normalized.length);
+
+  const match = expanded[0]?.node;
   if (!match) {
     return null;
   }

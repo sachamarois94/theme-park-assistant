@@ -33,6 +33,8 @@ cp .env.example .env.local
 
 3. (Optional but recommended) Fill in known provider IDs for each park.
 
+   Tip: for production reliability, set explicit provider IDs for all parks in `.env.local`.
+
 4. Run development server:
 
 ```bash

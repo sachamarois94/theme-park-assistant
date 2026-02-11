@@ -82,15 +82,34 @@ export async function getParkLiveSnapshot(
     return cached.snapshot;
   }
 
+  let bestSnapshot: ParkLiveSnapshot | null = null;
+
   for (const provider of PROV_ORDER) {
     const snapshot = await provider.getLiveData(park);
-    if (snapshot && snapshot.attractions.length > 0) {
-      liveCache.set(park.id, {
-        snapshot,
-        expiresAt: now + CACHE_TTL_SECONDS * 1000
-      });
-      return snapshot;
+    if (!snapshot || snapshot.attractions.length === 0) {
+      continue;
     }
+
+    if (!bestSnapshot) {
+      bestSnapshot = snapshot;
+      continue;
+    }
+
+    const snapshotIsPreferred =
+      (bestSnapshot.stale && !snapshot.stale) ||
+      snapshot.freshnessSeconds + 60 < bestSnapshot.freshnessSeconds;
+
+    if (snapshotIsPreferred) {
+      bestSnapshot = snapshot;
+    }
+  }
+
+  if (bestSnapshot) {
+    liveCache.set(park.id, {
+      snapshot: bestSnapshot,
+      expiresAt: now + CACHE_TTL_SECONDS * 1000
+    });
+    return bestSnapshot;
   }
 
   if (cached) {

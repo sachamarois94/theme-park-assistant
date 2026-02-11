@@ -9,7 +9,8 @@ import {
 } from "@/lib/providers/base";
 
 const API_BASE = process.env.QUEUETIMES_API_BASE ?? "https://queue-times.com/pages/api";
-const STALE_AFTER_SECONDS = Number(process.env.LIVE_STALE_AFTER_SECONDS ?? 360);
+const STALE_AFTER_SECONDS = Number(process.env.LIVE_STALE_AFTER_SECONDS ?? 10800);
+const API_BASE_FALLBACK = "https://queue-times.com";
 
 const discoveredParkIds = new Map<string, string>();
 
@@ -52,15 +53,39 @@ async function resolveParkId(park: ParkDefinition): Promise<string | null> {
     return cached;
   }
 
-  const parkPayload = await safeJsonFetch<unknown>(`${API_BASE}/parks`);
-  if (!parkPayload) {
+  const parkPayloadCandidates = [
+    await safeJsonFetch<unknown>(`${API_BASE}/parks`),
+    await safeJsonFetch<unknown>(`${API_BASE}/parks.json`),
+    await safeJsonFetch<unknown>(`${API_BASE_FALLBACK}/parks.json`),
+    await safeJsonFetch<unknown>(`${API_BASE_FALLBACK}/parks`)
+  ].filter(Boolean);
+
+  if (parkPayloadCandidates.length === 0) {
     return null;
   }
 
   const nodes: Array<{ id: string; name: string }> = [];
-  collectNodes(parkPayload, nodes);
-  const aliases = new Set([park.name, ...park.aliases].map(normalize));
-  const match = nodes.find((node) => aliases.has(normalize(node.name)));
+  for (const payload of parkPayloadCandidates) {
+    collectNodes(payload, nodes);
+  }
+
+  const aliases = [park.name, ...park.aliases].map(normalize);
+  const aliasSet = new Set(aliases);
+
+  const exact = nodes.find((node) => aliasSet.has(normalize(node.name)));
+  if (exact) {
+    discoveredParkIds.set(park.id, exact.id);
+    return exact.id;
+  }
+
+  const expanded = nodes
+    .map((node) => ({ node, normalized: normalize(node.name) }))
+    .filter((entry) =>
+      aliases.some((alias) => entry.normalized.includes(alias) || alias.includes(entry.normalized))
+    )
+    .sort((a, b) => a.normalized.length - b.normalized.length);
+
+  const match = expanded[0]?.node;
 
   if (!match) {
     return null;
@@ -76,9 +101,12 @@ interface QueueTimesRide {
   is_open?: boolean;
   status?: string;
   wait_time?: number | null;
+  waitTime?: number | null;
   queue_type?: string;
+  queueType?: string;
   last_updated?: string;
   updated_at?: string;
+  lastUpdated?: string;
   land?: string;
 }
 
@@ -96,7 +124,12 @@ function collectRides(input: unknown, results: QueueTimesRide[]) {
 
   const value = input as Record<string, unknown>;
   const hasRideShape = typeof value.name === "string" &&
-    ("wait_time" in value || "is_open" in value || "status" in value || "queue_type" in value);
+    ("wait_time" in value ||
+      "waitTime" in value ||
+      "is_open" in value ||
+      "status" in value ||
+      "queue_type" in value ||
+      "queueType" in value);
 
   if (hasRideShape) {
     results.push(value as unknown as QueueTimesRide);
@@ -108,12 +141,22 @@ function collectRides(input: unknown, results: QueueTimesRide[]) {
 }
 
 async function fetchQueuePayload(parkId: string): Promise<unknown | null> {
-  const first = await safeJsonFetch<unknown>(`${API_BASE}/park/${parkId}/queue_times`);
-  if (first) {
-    return first;
-  }
+  const candidates = [
+    `${API_BASE}/park/${parkId}/queue_times`,
+    `${API_BASE}/parks/${parkId}/queue_times`,
+    `${API_BASE}/park/${parkId}/queue_times.json`,
+    `${API_BASE}/parks/${parkId}/queue_times.json`,
+    `${API_BASE_FALLBACK}/parks/${parkId}/queue_times.json`,
+    `${API_BASE_FALLBACK}/parks/${parkId}/queue_times`
+  ];
 
-  return safeJsonFetch<unknown>(`${API_BASE}/parks/${parkId}/queue_times`);
+  for (const url of candidates) {
+    const payload = await safeJsonFetch<unknown>(url);
+    if (payload) {
+      return payload;
+    }
+  }
+  return null;
 }
 
 export const queueTimesProvider: LiveProvider = {
@@ -140,15 +183,20 @@ export const queueTimesProvider: LiveProvider = {
         const status = ride.is_open === false
           ? "DOWN"
           : normalizeStatus(ride.status ?? (ride.is_open ? "operating" : undefined));
-        const sourceUpdatedAt = ride.last_updated ?? ride.updated_at ?? ingestedAt;
+        const sourceUpdatedAt = ride.last_updated ?? ride.lastUpdated ?? ride.updated_at ?? ingestedAt;
+        const wait = typeof ride.wait_time === "number"
+          ? ride.wait_time
+          : typeof ride.waitTime === "number"
+            ? ride.waitTime
+            : null;
 
         return {
           attractionId: String(ride.id ?? `${park.id}-${index}`),
           name: ride.name!.trim(),
           land: ride.land,
           status,
-          waitMinutes: typeof ride.wait_time === "number" ? Math.max(0, Math.round(ride.wait_time)) : null,
-          queueType: normalizeQueueType(ride.queue_type),
+          waitMinutes: typeof wait === "number" ? Math.max(0, Math.round(wait)) : null,
+          queueType: normalizeQueueType(ride.queue_type ?? ride.queueType),
           sourceUpdatedAt,
           ingestedAt,
           provider: "queuetimes" as const

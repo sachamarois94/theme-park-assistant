@@ -1,0 +1,45 @@
+name: Wait History Ingest
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: wait-history-ingest
+      cancel-in-progress: false
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      BASE_URL: ${{ secrets.APP_BASE_URL }}
+      NODE_OPTIONS: --dns-result-order=ipv4first
+      INGEST_FORCE_REFRESH: "1"
+    steps:
+      - name: Validate required secrets
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "Missing required secret: DATABASE_URL"
+            exit 1
+          fi
+          if [ -z "${BASE_URL}" ]; then
+            echo "Missing required secret: APP_BASE_URL"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Ingest wait observations
+        run: npm run db:ingest:wait-history

@@ -139,6 +139,26 @@ This refreshes all baseline materialized views and prunes old history by `PRUNE_
 - Ingest job: every 5 minutes
 - Baseline refresh + prune: every 15 minutes
 
+Cloud-first option (recommended): GitHub Actions schedules
+
+This repo includes:
+- `.github/workflows/wait-history-ingest.yml` (every 5 minutes)
+- `.github/workflows/wait-history-refresh.yml` (every 15 minutes)
+
+Required repository secrets:
+- `DATABASE_URL`
+- `APP_BASE_URL` (public deployed app URL, e.g. `https://your-app.vercel.app`)
+
+Setup:
+1. Go to GitHub repo -> `Settings` -> `Secrets and variables` -> `Actions`.
+2. Add the two secrets above.
+3. Open `Actions` tab and run each workflow once using `Run workflow`.
+4. Leave workflows enabled for continuous cloud collection.
+
+Notes:
+- This runs in the cloud and does not depend on your laptop being on.
+- Scheduled workflows may execute with minor timing jitter.
+
 macOS one-command installer:
 
 ```bash
@@ -165,6 +185,10 @@ Uninstall managed cron jobs:
 ```bash
 npm run db:cron:uninstall:macos
 ```
+
+Local cron caveats:
+- Local cron runs only while your Mac is on and awake.
+- On macOS, running from protected folders such as `Documents` can trigger `Operation not permitted` for cron.
 
 Environment variables used by workers:
 - `DATABASE_URL` (required)

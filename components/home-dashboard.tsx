@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ParkLiveSnapshot } from "@/lib/types/park";
+import { ParkLiveSnapshot, ProactiveNudge } from "@/lib/types/park";
 
 type ParkOption = {
   id: string;
@@ -19,6 +19,8 @@ export function HomeDashboard() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [proactiveEnabled, setProactiveEnabled] = useState(false);
+  const [nudges, setNudges] = useState<ProactiveNudge[]>([]);
+  const [nudgesLoading, setNudgesLoading] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -95,6 +97,41 @@ export function HomeDashboard() {
     };
   }, [selectedParkId]);
 
+  useEffect(() => {
+    if (!proactiveEnabled || !selectedParkId) {
+      setNudges([]);
+      return;
+    }
+
+    let mounted = true;
+
+    async function loadNudges() {
+      setNudgesLoading(true);
+      const response = await fetch(`/api/proactive/nudges?parkId=${selectedParkId}`, {
+        cache: "no-store"
+      });
+      const json = await response.json();
+      if (!mounted) {
+        return;
+      }
+      setNudges(Array.isArray(json.nudges) ? (json.nudges as ProactiveNudge[]) : []);
+      setNudgesLoading(false);
+    }
+
+    loadNudges().catch(() => {
+      setNudgesLoading(false);
+    });
+
+    const interval = window.setInterval(() => {
+      loadNudges().catch(() => undefined);
+    }, 60_000);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+    };
+  }, [proactiveEnabled, selectedParkId]);
+
   const recommendation = useMemo(() => {
     if (!snapshot) {
       return null;
@@ -127,6 +164,13 @@ export function HomeDashboard() {
     });
     const json = await response.json();
     setSnapshot(json as LiveApiResponse);
+    if (proactiveEnabled) {
+      const nudgeResponse = await fetch(`/api/proactive/nudges?parkId=${selectedParkId}`, {
+        cache: "no-store"
+      });
+      const nudgeJson = await nudgeResponse.json();
+      setNudges(Array.isArray(nudgeJson.nudges) ? (nudgeJson.nudges as ProactiveNudge[]) : []);
+    }
     setRefreshing(false);
   }
 
@@ -253,6 +297,41 @@ export function HomeDashboard() {
                   <p className="text-xs text-soft">{attraction.queueType}</p>
                 </div>
               </motion.div>
+            ))}
+          </div>
+        )}
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 22 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.16, ease: "easeOut" }}
+        className="glass-card rounded-3xl p-4 shadow-card md:p-5"
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Proactive Nudges</h3>
+          <span className="pill px-3 py-1 text-xs">{proactiveEnabled ? "Active" : "Off"}</span>
+        </div>
+
+        {!proactiveEnabled ? (
+          <p className="text-sm text-soft">Enable proactive mode to receive wait-drop and disruption alerts.</p>
+        ) : nudgesLoading ? (
+          <p className="text-sm text-soft">Checking for meaningful updates...</p>
+        ) : nudges.length === 0 ? (
+          <p className="text-sm text-soft">No high-impact nudges right now. You are in a stable operating window.</p>
+        ) : (
+          <div className="space-y-2">
+            {nudges.map((nudge) => (
+              <div
+                key={nudge.id}
+                className="rounded-2xl border border-cyan-200/20 bg-cyan-500/10 p-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium text-white">{nudge.title}</p>
+                  <span className="pill px-3 py-1 text-xs">{nudge.type}</span>
+                </div>
+                <p className="mt-2 text-sm text-slate-100">{nudge.message}</p>
+              </div>
             ))}
           </div>
         )}

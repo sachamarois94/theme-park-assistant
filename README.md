@@ -13,6 +13,7 @@ Dark-first, mobile-first Next.js PWA for Orlando Disney + Universal operations g
   - `POST /api/plan/generate`
   - `POST /api/plan/replan`
   - `GET|POST /api/proactive/toggle`
+  - `GET /api/proactive/nudges?parkId=...`
 - Queue-time adapter strategy:
   - Primary: ThemeParks Wiki API
   - Fallback: Queue-Times API
@@ -64,6 +65,16 @@ Optional thresholds for health check:
 ```bash
 MAX_SYNTHETIC_PARKS=0 MAX_STALE_PARKS=2 npm run health:live
 ```
+
+## Proactive nudges
+
+- Toggle with `POST /api/proactive/toggle`.
+- Fetch recommendations/alerts with `GET /api/proactive/nudges?parkId=...`.
+- Nudge engine emits:
+  - wait-drop opportunities
+  - best-move prompts
+  - operating-status closures
+- Quiet hours and cooldown windows are configurable in `.env.local`.
 
 ## Project structure
 

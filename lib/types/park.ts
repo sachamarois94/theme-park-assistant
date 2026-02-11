@@ -80,3 +80,19 @@ export interface DayPlan {
   generatedAt: string;
   steps: PlannerStep[];
 }
+
+export type ProactiveNudgeType = "WAIT_DROP" | "BEST_MOVE" | "CLOSURE";
+
+export interface ProactiveNudge {
+  id: string;
+  parkId: ParkId;
+  type: ProactiveNudgeType;
+  title: string;
+  message: string;
+  attractionId?: string;
+  attractionName?: string;
+  previousWaitMinutes?: number | null;
+  currentWaitMinutes?: number | null;
+  priority: number;
+  createdAt: string;
+}

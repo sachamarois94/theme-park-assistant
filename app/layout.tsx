@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 import { AppShell } from "@/components/app-shell";
 import { ServiceWorkerRegister } from "@/components/sw-register";
@@ -32,7 +33,15 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <div className="grain-overlay" />
-        <AppShell>{children}</AppShell>
+        <Suspense
+          fallback={(
+            <div className="relative mx-auto min-h-screen max-w-6xl px-4 pb-10 pt-6 md:px-8">
+              <main>{children}</main>
+            </div>
+          )}
+        >
+          <AppShell>{children}</AppShell>
+        </Suspense>
         <ServiceWorkerRegister />
       </body>
     </html>

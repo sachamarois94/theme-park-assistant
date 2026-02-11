@@ -1,13 +1,13 @@
 import { recommendNext } from "@/lib/data/live-data-service";
 import { ParkLiveSnapshot, ProactiveNudge } from "@/lib/types/park";
 
-const QUIET_HOURS_START = Number(process.env.PROACTIVE_QUIET_HOURS_START ?? 22);
-const QUIET_HOURS_END = Number(process.env.PROACTIVE_QUIET_HOURS_END ?? 7);
-const WAIT_DROP_MIN_FROM = Number(process.env.PROACTIVE_WAIT_DROP_MIN_FROM ?? 30);
-const WAIT_DROP_MIN_DELTA = Number(process.env.PROACTIVE_WAIT_DROP_MIN_DELTA ?? 12);
-const BEST_MOVE_MAX_WAIT = Number(process.env.PROACTIVE_BEST_MOVE_MAX_WAIT ?? 20);
-const NUDGE_COOLDOWN_SECONDS = Number(process.env.PROACTIVE_NUDGE_COOLDOWN_SECONDS ?? 600);
-const NUDGE_LIMIT = Number(process.env.PROACTIVE_NUDGE_LIMIT ?? 3);
+const QUIET_HOURS_START = Number(process.env.PROACTIVE_QUIET_HOURS_START ?? 0);
+const QUIET_HOURS_END = Number(process.env.PROACTIVE_QUIET_HOURS_END ?? 0);
+const WAIT_DROP_MIN_FROM = Number(process.env.PROACTIVE_WAIT_DROP_MIN_FROM ?? 20);
+const WAIT_DROP_MIN_DELTA = Number(process.env.PROACTIVE_WAIT_DROP_MIN_DELTA ?? 8);
+const BEST_MOVE_MAX_WAIT = Number(process.env.PROACTIVE_BEST_MOVE_MAX_WAIT ?? 45);
+const NUDGE_COOLDOWN_SECONDS = Number(process.env.PROACTIVE_NUDGE_COOLDOWN_SECONDS ?? 240);
+const NUDGE_LIMIT = Number(process.env.PROACTIVE_NUDGE_LIMIT ?? 4);
 
 type HistoricalAttractionState = {
   waitMinutes: number | null;
@@ -22,9 +22,13 @@ function nowEpoch(): number {
 }
 
 function inQuietHours(date = new Date()): boolean {
+  if (QUIET_HOURS_START === QUIET_HOURS_END) {
+    return false;
+  }
+
   const hour = date.getHours();
 
-  // Cross-midnight window support (default: 22:00 -> 07:00).
+  // Cross-midnight window support.
   if (QUIET_HOURS_START > QUIET_HOURS_END) {
     return hour >= QUIET_HOURS_START || hour < QUIET_HOURS_END;
   }

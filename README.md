@@ -42,6 +42,10 @@ cp .env.example .env.local
 npm run dev
 ```
 
+5. Open the website:
+
+`http://localhost:3000`
+
 ## Notes on queue data
 
 - If provider IDs are not configured, the app attempts park-name discovery.
@@ -75,6 +79,7 @@ MAX_SYNTHETIC_PARKS=0 MAX_STALE_PARKS=2 npm run health:live
   - best-move prompts
   - operating-status closures
 - Quiet hours and cooldown windows are configurable in `.env.local`.
+- Default v1 settings are tuned aggressively to surface more nudges (quiet hours disabled unless configured).
 
 ## Project structure
 

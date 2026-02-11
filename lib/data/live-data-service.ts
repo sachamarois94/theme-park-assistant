@@ -14,7 +14,7 @@ type CachedSnapshot = {
 const liveCache = new Map<ParkId, CachedSnapshot>();
 
 const NON_RIDE_NAME_PATTERN =
-  /\b(park|cavalcade|parade|fireworks|spectacular|show|character|meet|greet|after hours|restaurant|dining|shop|store|merch|photopass)\b/i;
+  /\b(restaurant|restaurante|dining|diner|cafe|cafes|grill|grille|inn|tavern|lounge|snack|market|bakery|bistro)\b/i;
 const RIDE_HINT_PATTERN =
   /\b(coaster|mountain|train|railroad|adventure|flight|journey|run|dash|rapids|safari|speedway|track|expedition|river|mansion|pirates|spin|tower)\b/i;
 
@@ -67,15 +67,6 @@ function buildSummary(attractions: LiveAttractionState[]) {
 }
 
 function isQueueRelevantAttraction(attraction: LiveAttractionState, parkName: string): boolean {
-  const hasQueueSignal =
-    typeof attraction.waitMinutes === "number" ||
-    attraction.queueType === "STANDBY" ||
-    attraction.queueType === "SINGLE_RIDER" ||
-    attraction.queueType === "VIRTUAL";
-  if (hasQueueSignal) {
-    return true;
-  }
-
   const normalizedAttractionName = normalizeName(attraction.name);
   const normalizedParkName = normalizeName(parkName);
 
@@ -83,8 +74,18 @@ function isQueueRelevantAttraction(attraction: LiveAttractionState, parkName: st
     return false;
   }
 
+  // Hard-exclude non-ride entities even when providers report pseudo-queue values.
   if (NON_RIDE_NAME_PATTERN.test(attraction.name)) {
     return false;
+  }
+
+  const hasQueueSignal =
+    typeof attraction.waitMinutes === "number" ||
+    attraction.queueType === "STANDBY" ||
+    attraction.queueType === "SINGLE_RIDER" ||
+    attraction.queueType === "VIRTUAL";
+  if (hasQueueSignal) {
+    return true;
   }
 
   // Keep non-operating entries only if they still look ride-like.

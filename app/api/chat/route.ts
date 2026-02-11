@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getParkLiveSnapshot, recommendNext } from "@/lib/data/live-data-service";
+import { buildServiceNotice } from "@/lib/data/live-quality";
 import { ParkId } from "@/lib/types/park";
 
 interface ChatRequestBody {
@@ -32,6 +33,7 @@ export async function POST(request: NextRequest) {
 
   const lower = message.toLowerCase();
   const recommendation = recommendNext(snapshot);
+  const serviceNotice = buildServiceNotice(snapshot);
 
   if (lower.includes("wait") || lower.includes("line")) {
     const longest = snapshot.summary.longestWait;
@@ -46,6 +48,7 @@ export async function POST(request: NextRequest) {
         .filter(Boolean)
         .join(" "),
       cards: recommendation.alternatives.slice(0, 3),
+      serviceNotice,
       dataFreshness: {
         provider: snapshot.provider,
         sourceUpdatedAt: snapshot.sourceUpdatedAt,
@@ -60,6 +63,7 @@ export async function POST(request: NextRequest) {
     if (!top) {
       return NextResponse.json({
         reply: "I cannot find an operating attraction with live wait data right now. Try a replan in a few minutes.",
+        serviceNotice,
         dataFreshness: {
           provider: snapshot.provider,
           sourceUpdatedAt: snapshot.sourceUpdatedAt,
@@ -72,6 +76,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       reply: `Go to ${top.name} next. Estimated wait is ${top.waitMinutes ?? "unknown"} minutes and this is currently one of the best throughput moves.`,
       cards: [top, ...recommendation.alternatives],
+      serviceNotice,
       dataFreshness: {
         provider: snapshot.provider,
         sourceUpdatedAt: snapshot.sourceUpdatedAt,
@@ -83,6 +88,7 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     reply: buildFallbackReply(),
+    serviceNotice,
     dataFreshness: {
       provider: snapshot.provider,
       sourceUpdatedAt: snapshot.sourceUpdatedAt,

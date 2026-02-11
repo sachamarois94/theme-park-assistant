@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildPlanFromSnapshot, getParkLiveSnapshot } from "@/lib/data/live-data-service";
+import { buildServiceNotice } from "@/lib/data/live-quality";
 import { ParkId } from "@/lib/types/park";
 
 interface GeneratePlanRequest {
@@ -22,6 +23,7 @@ export async function POST(request: NextRequest) {
   const plan = buildPlanFromSnapshot(snapshot, body.startTime, body.hours ?? 8);
   return NextResponse.json({
     plan,
+    serviceNotice: buildServiceNotice(snapshot),
     dataFreshness: {
       provider: snapshot.provider,
       sourceUpdatedAt: snapshot.sourceUpdatedAt,

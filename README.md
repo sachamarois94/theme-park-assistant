@@ -47,6 +47,24 @@ npm run dev
 - If both providers fail, APIs return a synthetic snapshot with a `degradedReason` for UI continuity.
 - For production, replace synthetic fallback with strict degraded mode and monitor provider health.
 
+## Validation commands
+
+Run these while `npm run dev` is active:
+
+```bash
+npm run smoke:api
+```
+
+```bash
+npm run health:live
+```
+
+Optional thresholds for health check:
+
+```bash
+MAX_SYNTHETIC_PARKS=0 MAX_STALE_PARKS=2 npm run health:live
+```
+
 ## Project structure
 
 - `/app` - Next.js App Router pages and API routes

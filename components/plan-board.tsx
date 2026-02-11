@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DayPlan } from "@/lib/types/park";
+import { PixieLoader } from "@/components/pixie-loader";
 
 type ParkOption = {
   id: string;
@@ -9,6 +12,11 @@ type ParkOption = {
 };
 
 export function PlanBoard() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const parkFromQuery = searchParams.get("park");
+
   const [parks, setParks] = useState<ParkOption[]>([]);
   const [parkId, setParkId] = useState("");
   const [plan, setPlan] = useState<DayPlan | null>(null);
@@ -21,11 +29,34 @@ export function PlanBoard() {
       .then((json) => {
         setParks(json.parks ?? []);
         if (json.parks?.length > 0) {
-          setParkId(json.parks[0].id);
+          const stored = localStorage.getItem("selected_park_id");
+          const preferred = [parkFromQuery, stored, json.parks[0].id].find(
+            (candidate) => candidate && json.parks.some((park: ParkOption) => park.id === candidate)
+          );
+          if (preferred) {
+            setParkId(preferred);
+            localStorage.setItem("selected_park_id", preferred);
+          }
         }
       })
       .catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (!parkFromQuery || !parks.some((park) => park.id === parkFromQuery)) {
+      return;
+    }
+    setParkId(parkFromQuery);
+    localStorage.setItem("selected_park_id", parkFromQuery);
+  }, [parkFromQuery, parks]);
+
+  function applyPark(nextParkId: string) {
+    setParkId(nextParkId);
+    localStorage.setItem("selected_park_id", nextParkId);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("park", nextParkId);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
 
   async function generatePlan() {
     if (!parkId || busy) {
@@ -96,7 +127,7 @@ export function PlanBoard() {
         <div className="mt-4 flex flex-wrap gap-2">
           <select
             value={parkId}
-            onChange={(event) => setParkId(event.target.value)}
+            onChange={(event) => applyPark(event.target.value)}
             className="rounded-2xl border border-white/15 bg-slate-950/50 px-3 py-2 text-sm text-white outline-none ring-accent-0/40 focus:ring"
           >
             {parks.map((park) => (
@@ -123,8 +154,20 @@ export function PlanBoard() {
         </div>
 
         <div className="space-y-2">
+          {busy ? (
+            <div className="mb-1 flex items-center gap-2 text-sm text-soft">
+              <PixieLoader size={20} />
+              Plotting your route with fresh queue conditions...
+            </div>
+          ) : null}
           {plan?.steps.map((step, index) => (
-            <div key={step.stepId} className="rounded-2xl border border-white/10 bg-slate-950/40 p-3">
+            <motion.div
+              key={step.stepId}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: Math.min(index * 0.06, 0.35), duration: 0.24 }}
+              className="relative rounded-2xl border border-white/10 bg-slate-950/40 p-3"
+            >
               <div className="flex items-center justify-between gap-2">
                 <p className="font-medium">
                   {index + 1}. {step.attractionName}
@@ -143,7 +186,15 @@ export function PlanBoard() {
                 })}
               </p>
               <p className="mt-2 text-sm text-soft">{step.reason}</p>
-            </div>
+              {index < (plan?.steps.length ?? 0) - 1 ? (
+                <motion.div
+                  className="absolute -bottom-4 left-6 h-4 border-l border-dashed border-cyan-300/40"
+                  initial={{ opacity: 0, scaleY: 0 }}
+                  animate={{ opacity: 1, scaleY: 1 }}
+                  transition={{ delay: Math.min(index * 0.06 + 0.12, 0.45), duration: 0.2 }}
+                />
+              ) : null}
+            </motion.div>
           ))}
         </div>
       </div>

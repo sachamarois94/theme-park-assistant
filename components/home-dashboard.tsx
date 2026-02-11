@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ParkLiveSnapshot,
   ProactiveNudge,
   WaitOpportunityEntry,
   WaitOpportunitySnapshot
 } from "@/lib/types/park";
+import { PixieLoader } from "@/components/pixie-loader";
 
 type ParkOption = {
   id: string;
@@ -24,6 +26,19 @@ type OpportunityApiResponse = WaitOpportunitySnapshot & {
     stale: boolean;
   };
 };
+
+function waitTone(wait: number | null): "low" | "mid" | "high" {
+  if (wait === null) {
+    return "mid";
+  }
+  if (wait <= 20) {
+    return "low";
+  }
+  if (wait <= 45) {
+    return "mid";
+  }
+  return "high";
+}
 
 function formatDeltaBadge(entry: WaitOpportunityEntry): string {
   const minuteSign = entry.deltaMinutes > 0 ? "+" : "";
@@ -81,7 +96,73 @@ function TrendSparkline({
   );
 }
 
+function AnimatedWaitNumber({ value }: { value: number | null }) {
+  const [display, setDisplay] = useState<number | null>(value);
+
+  useEffect(() => {
+    if (value === null) {
+      setDisplay(null);
+      return;
+    }
+    if (display === null) {
+      setDisplay(value);
+      return;
+    }
+
+    const start = display;
+    const delta = value - start;
+    if (delta === 0) {
+      return;
+    }
+
+    const steps = Math.min(14, Math.max(6, Math.abs(delta)));
+    let frame = 0;
+    const timer = window.setInterval(() => {
+      frame += 1;
+      const next = Math.round(start + (delta * frame) / steps);
+      setDisplay(next);
+      if (frame >= steps) {
+        window.clearInterval(timer);
+      }
+    }, 28);
+
+    return () => window.clearInterval(timer);
+  }, [value, display]);
+
+  if (display === null) {
+    return <span>--</span>;
+  }
+  return <span>{display}</span>;
+}
+
+function WaitProgressRing({ wait }: { wait: number | null }) {
+  const value = wait ?? 0;
+  const ratio = Math.max(0.05, Math.min(1, value / 120));
+  const color = value <= 20 ? "#6EE7B7" : value <= 45 ? "#FCD34D" : "#FCA5A5";
+  return (
+    <svg viewBox="0 0 40 40" className="h-10 w-10">
+      <circle cx="20" cy="20" r="16" stroke="rgba(255,255,255,0.15)" strokeWidth="4" fill="none" />
+      <circle
+        cx="20"
+        cy="20"
+        r="16"
+        stroke={color}
+        strokeWidth="4"
+        fill="none"
+        strokeDasharray={`${ratio * 100} 100`}
+        strokeLinecap="round"
+        transform="rotate(-90 20 20)"
+      />
+    </svg>
+  );
+}
+
 export function HomeDashboard() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const parkFromQuery = searchParams.get("park");
+
   const [parks, setParks] = useState<ParkOption[]>([]);
   const [selectedParkId, setSelectedParkId] = useState<string>("");
   const [snapshot, setSnapshot] = useState<LiveApiResponse | null>(null);
@@ -110,7 +191,14 @@ export function HomeDashboard() {
       setParks(nextParks);
 
       if (nextParks.length > 0) {
-        setSelectedParkId(nextParks[0].id);
+        const stored = localStorage.getItem("selected_park_id");
+        const preferred = [parkFromQuery, stored, nextParks[0].id].find(
+          (candidate) => candidate && nextParks.some((park) => park.id === candidate)
+        );
+        if (preferred) {
+          setSelectedParkId(preferred);
+          localStorage.setItem("selected_park_id", preferred);
+        }
       }
 
       const proactiveJson = await proactiveRes.json();
@@ -125,6 +213,14 @@ export function HomeDashboard() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!parkFromQuery || !parks.some((park) => park.id === parkFromQuery)) {
+      return;
+    }
+    setSelectedParkId(parkFromQuery);
+    localStorage.setItem("selected_park_id", parkFromQuery);
+  }, [parkFromQuery, parks]);
 
   useEffect(() => {
     if (!selectedParkId) {
@@ -263,6 +359,14 @@ export function HomeDashboard() {
     setRefreshing(false);
   }
 
+  function applyParkSelection(nextParkId: string) {
+    setSelectedParkId(nextParkId);
+    localStorage.setItem("selected_park_id", nextParkId);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("park", nextParkId);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
   return (
     <section className="space-y-5">
       <div className="grid gap-4 md:grid-cols-[1.4fr_1fr]">
@@ -330,6 +434,12 @@ export function HomeDashboard() {
             >
               Proactive mode: {proactiveEnabled ? "On" : "Off"}
             </button>
+            {(refreshing || loading) ? (
+              <div className="flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100">
+                <PixieLoader size={22} />
+                Pixie dust recalculating...
+              </div>
+            ) : null}
           </div>
         </motion.div>
 
@@ -343,7 +453,7 @@ export function HomeDashboard() {
           <label className="mt-4 block text-xs uppercase tracking-[0.18em] text-soft">Park</label>
           <select
             value={selectedParkId}
-            onChange={(event) => setSelectedParkId(event.target.value)}
+            onChange={(event) => applyParkSelection(event.target.value)}
             className="mt-2 w-full rounded-2xl border border-white/15 bg-slate-950/50 px-3 py-2 text-sm text-white outline-none ring-accent-0/40 focus:ring"
           >
             {parks.map((park) => (
@@ -459,7 +569,10 @@ export function HomeDashboard() {
         </div>
 
         {loading ? (
-          <p className="text-soft">Loading live operations...</p>
+          <div className="flex items-center gap-2 text-soft">
+            <PixieLoader size={24} />
+            Loading live operations...
+          </div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
             {snapshot?.attractions.slice(0, 12).map((attraction, index) => (
@@ -480,7 +593,20 @@ export function HomeDashboard() {
                   </span>
                 </div>
                 <div className="mt-3 flex items-end justify-between">
-                  <p className="text-2xl font-semibold">{attraction.waitMinutes ?? "--"}m</p>
+                  <div className="flex items-end gap-2">
+                    <p
+                      className={`text-2xl font-semibold transition-colors ${
+                        waitTone(attraction.waitMinutes) === "low"
+                          ? "text-emerald-200"
+                          : waitTone(attraction.waitMinutes) === "mid"
+                            ? "text-amber-100"
+                            : "text-rose-200"
+                      }`}
+                    >
+                      <AnimatedWaitNumber value={attraction.waitMinutes} />m
+                    </p>
+                    <WaitProgressRing wait={attraction.waitMinutes} />
+                  </div>
                   <p className="text-xs text-soft">{attraction.queueType}</p>
                 </div>
               </motion.div>
@@ -503,7 +629,10 @@ export function HomeDashboard() {
         {!proactiveEnabled ? (
           <p className="text-sm text-soft">Enable proactive mode to receive wait-drop and disruption alerts.</p>
         ) : nudgesLoading ? (
-          <p className="text-sm text-soft">Checking for meaningful updates...</p>
+          <div className="flex items-center gap-2 text-sm text-soft">
+            <PixieLoader size={22} />
+            Checking for meaningful updates...
+          </div>
         ) : nudges.length === 0 ? (
           <p className="text-sm text-soft">No high-impact nudges right now. You are in a stable operating window.</p>
         ) : (

@@ -147,11 +147,10 @@ This repo includes:
 
 Required repository secrets:
 - `DATABASE_URL`
-- `APP_BASE_URL` (public deployed app URL, e.g. `https://your-app.vercel.app`)
 
 Setup:
 1. Go to GitHub repo -> `Settings` -> `Secrets and variables` -> `Actions`.
-2. Add the two secrets above.
+2. Add the secret above.
 3. Open `Actions` tab and run each workflow once using `Run workflow`.
 4. Leave workflows enabled for continuous cloud collection.
 

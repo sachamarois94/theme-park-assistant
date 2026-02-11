@@ -14,7 +14,6 @@ jobs:
       cancel-in-progress: false
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      BASE_URL: ${{ secrets.APP_BASE_URL }}
       NODE_OPTIONS: --dns-result-order=ipv4first
       INGEST_FORCE_REFRESH: "1"
     steps:
@@ -22,10 +21,6 @@ jobs:
         run: |
           if [ -z "${DATABASE_URL}" ]; then
             echo "Missing required secret: DATABASE_URL"
-            exit 1
-          fi
-          if [ -z "${BASE_URL}" ]; then
-            echo "Missing required secret: APP_BASE_URL"
             exit 1
           fi
 
@@ -41,5 +36,32 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Start local API server
+        run: |
+          npm run dev -- --port 3000 > /tmp/theme-park-dev.log 2>&1 &
+          echo $! > /tmp/theme-park-dev.pid
+
+      - name: Wait for API readiness
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/api/parks > /dev/null; then
+              echo "API is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API failed to become ready in time"
+          tail -n 200 /tmp/theme-park-dev.log || true
+          exit 1
+
       - name: Ingest wait observations
+        env:
+          BASE_URL: http://127.0.0.1:3000
         run: npm run db:ingest:wait-history
+
+      - name: Stop local API server
+        if: always()
+        run: |
+          if [ -f /tmp/theme-park-dev.pid ]; then
+            kill "$(cat /tmp/theme-park-dev.pid)" || true
+          fi
